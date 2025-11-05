@@ -1,7 +1,4 @@
-import SteamAPI from 'steamapi';
 import { GameModel, UserGameModel } from '../database/models';
-
-const steam = new SteamAPI(process.env.STEAM_API_KEY || '');
 
 export interface SteamGame {
   appid: number;
@@ -18,12 +15,15 @@ export interface FetchGamesResult {
 }
 
 /**
- * Resolves a Steam vanity URL or custom ID to a SteamID64
+ * Resolves a Steam vanity URL or custom ID to a SteamID64 using direct API calls
  */
 export async function resolveSteamId(input: string): Promise<string | null> {
   try {
+    console.log(`[Steam Resolve] Input: ${input}`);
+
     // Check if input is already a SteamID64 (17 digits)
     if (/^\d{17}$/.test(input)) {
+      console.log(`[Steam Resolve] Input is already a SteamID64`);
       return input;
     }
 
@@ -31,22 +31,58 @@ export async function resolveSteamId(input: string): Promise<string | null> {
     const urlMatch = input.match(/steamcommunity\.com\/(profiles|id)\/([^\/]+)/);
     if (urlMatch) {
       const [, type, identifier] = urlMatch;
+      console.log(`[Steam Resolve] Extracted from URL - type: ${type}, identifier: ${identifier}`);
 
       if (type === 'profiles' && identifier) {
         // Already a SteamID64
+        console.log(`[Steam Resolve] URL contains SteamID64 directly`);
         return identifier;
-      } else if (identifier) {
+      } else if (identifier && type === 'id') {
         // Vanity URL, need to resolve
-        const steamId = await steam.resolve(identifier);
-        return steamId || null;
+        console.log(`[Steam Resolve] Resolving vanity URL: ${identifier}`);
+        return await resolveVanityUrl(identifier);
       }
     }
 
-    // Assume it's a vanity name
-    const steamId = await steam.resolve(input);
-    return steamId || null;
+    // Assume it's a vanity name without URL
+    console.log(`[Steam Resolve] Treating as vanity name: ${input}`);
+    return await resolveVanityUrl(input);
   } catch (error: any) {
-    console.error('Error resolving Steam ID:', error.message);
+    console.error('[Steam Resolve] Error:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Helper function to resolve a vanity URL to SteamID64 using direct API call
+ */
+async function resolveVanityUrl(vanityName: string): Promise<string | null> {
+  try {
+    const apiKey = process.env.STEAM_API_KEY;
+    const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key=${apiKey}&vanityurl=${vanityName}`;
+
+    console.log(`[Steam Resolve] Calling ResolveVanityURL API for: ${vanityName}`);
+
+    const response = await fetch(url);
+    console.log(`[Steam Resolve] API response status: ${response.status}`);
+
+    if (!response.ok) {
+      console.error(`[Steam Resolve] HTTP error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data: any = await response.json();
+    console.log(`[Steam Resolve] API response:`, data);
+
+    if (data.response?.success === 1 && data.response?.steamid) {
+      console.log(`[Steam Resolve] Successfully resolved to: ${data.response.steamid}`);
+      return data.response.steamid;
+    } else {
+      console.log(`[Steam Resolve] Could not resolve vanity URL. Response success: ${data.response?.success}`);
+      return null;
+    }
+  } catch (error: any) {
+    console.error(`[Steam Resolve] Error in resolveVanityUrl:`, error.message);
     return null;
   }
 }
@@ -59,11 +95,55 @@ export async function fetchAndStoreGames(
   steamId: string
 ): Promise<FetchGamesResult> {
   try {
-    // Fetch games from Steam API
-    const games: any = await steam.getUserOwnedGames(steamId);
+    console.log(`[Steam API] Fetching games for Steam ID: ${steamId}`);
+    console.log(`[Steam API] Using API key: ${process.env.STEAM_API_KEY ? process.env.STEAM_API_KEY.substring(0, 8) + '...' : 'NOT SET'}`);
 
-    if (!games || games.length === 0) {
-      // Could be empty library or private profile
+    // Use direct fetch instead of steamapi library (it has issues with API key handling)
+    const apiKey = process.env.STEAM_API_KEY;
+    const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${apiKey}&steamid=${steamId}&include_appinfo=true&format=json`;
+
+    console.log(`[Steam API] Fetching from URL (key hidden)`);
+
+    const response = await fetch(url);
+    console.log(`[Steam API] Response status: ${response.status} ${response.statusText}`);
+
+    if (response.status === 401) {
+      console.error(`[Steam API] 401 Unauthorized - API key is invalid`);
+      return {
+        success: false,
+        isPrivate: false,
+        gamesCount: 0,
+        error: 'Invalid Steam API key. Please check your STEAM_API_KEY in .env'
+      };
+    }
+
+    if (response.status === 403) {
+      console.log(`[Steam API] 403 Forbidden - Profile is private`);
+      return {
+        success: false,
+        isPrivate: true,
+        gamesCount: 0,
+        error: 'This Steam profile is private.'
+      };
+    }
+
+    if (!response.ok) {
+      console.error(`[Steam API] HTTP error: ${response.status}`);
+      return {
+        success: false,
+        isPrivate: false,
+        gamesCount: 0,
+        error: `Steam API error: ${response.statusText}`
+      };
+    }
+
+    const data: any = await response.json();
+    const games = data.response?.games || [];
+
+    console.log(`[Steam API] Received response. Games count: ${games.length}`);
+
+    if (games.length === 0) {
+      console.log(`[Steam API] Empty response. Profile may be private or have no games.`);
       return {
         success: false,
         isPrivate: true,
@@ -94,10 +174,14 @@ export async function fetchAndStoreGames(
       gamesCount: games.length
     };
   } catch (error: any) {
-    console.error('Error fetching Steam games:', error.message);
+    console.error('[Steam API] ERROR fetching games:', error.message);
+    console.error('[Steam API] Full error:', error);
+    console.error('[Steam API] Error stack:', error.stack);
 
     // Check if error is due to privacy settings
     if (error.message.includes('private') || error.message.includes('403')) {
+      console.log('[Steam API] Error identified as privacy issue');
+
       return {
         success: false,
         isPrivate: true,
@@ -106,6 +190,7 @@ export async function fetchAndStoreGames(
       };
     }
 
+    console.log('[Steam API] Error identified as general API error');
     return {
       success: false,
       isPrivate: false,

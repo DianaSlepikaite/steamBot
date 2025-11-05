@@ -9,10 +9,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const discordId = interaction.user.id;
 
   try {
+    console.log(`[linksteam] User ${discordId} attempting to link: ${steamInput}`);
+
     // Resolve Steam ID
     const steamId = await resolveSteamId(steamInput);
+    console.log(`[linksteam] Resolved Steam ID: ${steamId}`);
 
     if (!steamId) {
+      console.log(`[linksteam] Failed to resolve Steam ID for input: ${steamInput}`);
       return interaction.editReply({
         content: 'Could not resolve Steam ID. Please provide a valid Steam profile URL, custom URL, or SteamID64.',
       });
@@ -20,9 +24,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Save user to database
     UserModel.create(discordId, steamId);
+    console.log(`[linksteam] Saved user to database: Discord ${discordId} -> Steam ${steamId}`);
 
     // Fetch and store games
+    console.log(`[linksteam] Fetching games for Steam ID: ${steamId}`);
     const result = await fetchAndStoreGames(discordId, steamId);
+    console.log(`[linksteam] Fetch result:`, result);
 
     if (!result.success) {
       if (result.isPrivate) {

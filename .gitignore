@@ -4,3 +4,6 @@ dist/
 *.db
 *.log
 .DS_Store
+
+/*.d.ts
+/*.d.ts.map

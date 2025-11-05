@@ -64,11 +64,19 @@ export const UserModel = {
 // Game operations
 export const GameModel = {
   createOrUpdate(appId: number, name: string, iconUrl?: string): void {
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO games (app_id, name, icon_url)
+    // Use INSERT OR IGNORE to avoid cascading deletes, then UPDATE if needed
+    const insertStmt = db.prepare(`
+      INSERT OR IGNORE INTO games (app_id, name, icon_url)
       VALUES (?, ?, ?)
     `);
-    stmt.run(appId, name, iconUrl);
+    insertStmt.run(appId, name, iconUrl);
+
+    // Update the game info if it already existed
+    const updateStmt = db.prepare(`
+      UPDATE games SET name = ?, icon_url = ?
+      WHERE app_id = ?
+    `);
+    updateStmt.run(name, iconUrl, appId);
   },
 
   get(appId: number): Game | undefined {
