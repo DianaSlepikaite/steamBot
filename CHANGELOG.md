@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Multiplayer filtering for `/common` command** - Now only shows games that support multiplayer/co-op
+- **Player count display** - Shows maximum players supported for each multiplayer game (e.g., "Co-op: 4 players")
+- Increased `/common` command to support up to **10 users** (previously 5)
+- Steam Store API integration to detect multiplayer games and extract player counts
+- Displays multiplayer types (Online Co-op, Local Multiplayer, etc.) when player count unavailable
+- Caching system for multiplayer status to improve performance
+- Progress indicator when checking multiplayer games
+
 ### Fixed
 - **Critical Bug**: Fixed game ownership data being wiped when users refresh their libraries
   - Changed `INSERT OR REPLACE` to `INSERT OR IGNORE` + `UPDATE` to prevent cascading deletes

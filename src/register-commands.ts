@@ -42,7 +42,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('common')
-    .setDescription('Show games owned by all mentioned users')
+    .setDescription('Show multiplayer games owned by all mentioned users (2-10 users)')
     .addUserOption(option =>
       option
         .setName('user1')
@@ -71,6 +71,36 @@ const commands = [
       option
         .setName('user5')
         .setDescription('Fifth user')
+        .setRequired(false)
+    )
+    .addUserOption(option =>
+      option
+        .setName('user6')
+        .setDescription('Sixth user')
+        .setRequired(false)
+    )
+    .addUserOption(option =>
+      option
+        .setName('user7')
+        .setDescription('Seventh user')
+        .setRequired(false)
+    )
+    .addUserOption(option =>
+      option
+        .setName('user8')
+        .setDescription('Eighth user')
+        .setRequired(false)
+    )
+    .addUserOption(option =>
+      option
+        .setName('user9')
+        .setDescription('Ninth user')
+        .setRequired(false)
+    )
+    .addUserOption(option =>
+      option
+        .setName('user10')
+        .setDescription('Tenth user')
         .setRequired(false)
     ),
 
