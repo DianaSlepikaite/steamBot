@@ -1,7 +1,17 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
-const dbPath = path.join(__dirname, '../../data.db');
+// Use a more reliable database path that works in Docker
+const dbDir = process.env.DB_PATH || path.join(__dirname, '../../');
+const dbPath = path.join(dbDir, 'data.db');
+
+// Ensure directory exists
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+console.log(`[Database] Using database path: ${dbPath}`);
 const db: Database.Database = new Database(dbPath);
 
 // Enable foreign keys

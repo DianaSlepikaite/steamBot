@@ -7,22 +7,26 @@ import * as hasCmd from './commands/has';
 import * as commonCmd from './commands/common';
 import * as refreshCmd from './commands/refresh';
 
-// Load environment variables
+// Load environment variables from .env file (only needed for local development)
+// In production (Fly.io), environment variables are set via secrets
 dotenv.config();
 
 // Validate required environment variables
 if (!process.env.DISCORD_TOKEN) {
-  console.error('Error: DISCORD_TOKEN is not set in .env file');
+  console.error('Error: DISCORD_TOKEN environment variable is not set');
+  console.error('Set it with: fly secrets set DISCORD_TOKEN=your_token');
   process.exit(1);
 }
 
 if (!process.env.DISCORD_CLIENT_ID) {
-  console.error('Error: DISCORD_CLIENT_ID is not set in .env file');
+  console.error('Error: DISCORD_CLIENT_ID environment variable is not set');
+  console.error('Set it with: fly secrets set DISCORD_CLIENT_ID=your_client_id');
   process.exit(1);
 }
 
 if (!process.env.STEAM_API_KEY) {
-  console.error('Error: STEAM_API_KEY is not set in .env file');
+  console.error('Error: STEAM_API_KEY environment variable is not set');
+  console.error('Set it with: fly secrets set STEAM_API_KEY=your_steam_key');
   process.exit(1);
 }
 
