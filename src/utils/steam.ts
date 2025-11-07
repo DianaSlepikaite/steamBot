@@ -144,6 +144,20 @@ export async function fetchAndStoreGames(
 
     if (games.length === 0) {
       console.log(`[Steam API] Empty response. Profile may be private or have no games.`);
+
+      // Check if user already has games stored
+      const existingGameCount = UserGameModel.getUserGameCount(discordId);
+
+      if (existingGameCount > 0) {
+        console.log(`[Steam API] User has ${existingGameCount} games stored. Not wiping due to likely privacy setting.`);
+        return {
+          success: false,
+          isPrivate: true,
+          gamesCount: existingGameCount,
+          error: 'keepExisting' // Special flag to indicate we're keeping existing data
+        };
+      }
+
       return {
         success: false,
         isPrivate: true,

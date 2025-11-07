@@ -5,6 +5,7 @@ import * as linksteamCmd from './commands/linksteam';
 import * as whohasCmd from './commands/whohas';
 import * as hasCmd from './commands/has';
 import * as commonCmd from './commands/common';
+import * as commonvcCmd from './commands/commonvc';
 import * as refreshCmd from './commands/refresh';
 
 // Load environment variables from .env file (only needed for local development)
@@ -35,7 +36,7 @@ initializeDatabase();
 
 // Create Discord client
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
 // Command handlers map
@@ -44,6 +45,7 @@ const commands = new Map([
   ['whohas', whohasCmd],
   ['has', hasCmd],
   ['common', commonCmd],
+  ['commonvc', commonvcCmd],
   ['refresh', refreshCmd],
 ]);
 

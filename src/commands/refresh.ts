@@ -22,6 +22,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!result.success) {
       if (result.isPrivate) {
+        // Special case: User has existing games and profile is now private
+        if (result.error === 'keepExisting' && result.gamesCount > 0) {
+          const embed = new EmbedBuilder()
+            .setColor(0xFFA500)
+            .setTitle('Profile is Private - Using Cached Data')
+            .setDescription(
+              `Your Steam profile appears to be private, but we still have **${result.gamesCount} games** stored from your last refresh.\n\n` +
+              '**Your existing game data will be used** for now.\n\n' +
+              '⚠️ **Important:** If you\'ve bought new games, you\'ll need to:\n' +
+              '1. Make your [Game Details public](https://steamcommunity.com/my/edit/settings)\n' +
+              '2. Run `/refresh` again to update your library\n' +
+              '3. You can then set it back to private if desired'
+            )
+            .setFooter({ text: 'Note: Your game list may be outdated' });
+
+          return interaction.editReply({ embeds: [embed] });
+        }
+
+        // Regular private profile with no cached data
         UserModel.updatePrivacy(discordId, true);
 
         const embed = new EmbedBuilder()

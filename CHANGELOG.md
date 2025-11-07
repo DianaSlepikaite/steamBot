@@ -5,13 +5,23 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **New `/commonvc` command** - Find common multiplayer games for all users currently in a voice channel
+  - Automatically detects all users in the specified voice channel
+  - Filters out bots automatically
+  - Shows the same multiplayer filtering and player counts as `/common`
 - **Multiplayer filtering for `/common` command** - Now only shows games that support multiplayer/co-op
-- **Player count display** - Shows maximum players supported for each multiplayer game (e.g., "Co-op: 4 players")
+- **Player count display** - Shows maximum players supported for each multiplayer game with compact notation (e.g., "[4P Co-op]", "[32P]")
+- **Privacy protection for cached data** - Users can make their profile private after linking without losing their stored games
+  - Bot preserves existing game data when refresh fails due to privacy
+  - Shows warning message when using cached data
+  - Informs users how to update their library with new purchases
 - Increased `/common` command to support up to **10 users** (previously 5)
 - Steam Store API integration to detect multiplayer games and extract player counts
-- Displays multiplayer types (Online Co-op, Local Multiplayer, etc.) when player count unavailable
+- Hardcoded database of ~50 popular games with known player counts
+- Web scraping fallback from Steam community hub for player count detection
 - Caching system for multiplayer status to improve performance
 - Progress indicator when checking multiplayer games
+- `GuildVoiceStates` intent for voice channel member detection
 
 ### Fixed
 - **Critical Bug**: Fixed game ownership data being wiped when users refresh their libraries

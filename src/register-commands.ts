@@ -107,6 +107,16 @@ const commands = [
   new SlashCommandBuilder()
     .setName('refresh')
     .setDescription('Refresh your Steam game library'),
+
+  new SlashCommandBuilder()
+    .setName('commonvc')
+    .setDescription('Show multiplayer games for all users currently in a voice channel')
+    .addStringOption(option =>
+      option
+        .setName('channel')
+        .setDescription('Name of the voice channel')
+        .setRequired(true)
+    ),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);

@@ -152,5 +152,13 @@ export const UserGameModel = {
     `);
 
     return stmt.all(...discordIds, discordIds.length) as Game[];
+  },
+
+  getUserGameCount(discordId: string): number {
+    const stmt = db.prepare(`
+      SELECT COUNT(*) as count FROM user_games
+      WHERE discord_id = ?
+    `);
+    return (stmt.get(discordId) as { count: number }).count;
   }
 };
