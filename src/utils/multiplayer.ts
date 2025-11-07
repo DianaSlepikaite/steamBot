@@ -92,12 +92,113 @@ export async function getMultiplayerInfo(appId: number): Promise<MultiplayerInfo
       }
     });
 
-    // If no explicit player count, try to get from game details
+    // Try multiple sources for player count data
     if (!maxPlayers && !coopPlayers) {
-      // Some games have player count in supported_languages or other fields
-      // Check if there's a "players" field (uncommon but exists)
-      if (gameData.players) {
-        maxPlayers = gameData.players;
+      // Method 1: Check Steam community hub for multiplayer info
+      try {
+        const hubUrl = `https://steamcommunity.com/app/${appId}`;
+        const hubResponse = await fetch(hubUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+
+        if (hubResponse.ok) {
+          const html = await hubResponse.text();
+
+          // Look for common player count patterns in the page
+          // Examples: "2-4 players", "Up to 8 players", "4 player co-op"
+          const patterns = [
+            /(\d+)-(\d+)\s*players?/i,
+            /up to (\d+)\s*players?/i,
+            /(\d+)\s*player\s*co-?op/i,
+            /co-?op.*?(\d+)\s*players?/i,
+          ];
+
+          for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match) {
+              // Get the highest number found
+              const nums = match.slice(1).filter(n => n).map(n => parseInt(n));
+              const maxNum = Math.max(...nums);
+
+              if (match[0].toLowerCase().includes('co-op') || match[0].toLowerCase().includes('coop')) {
+                coopPlayers = maxNum;
+              } else {
+                maxPlayers = maxNum;
+              }
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // Continue to next method
+      }
+    }
+
+    // Method 2: Use known popular games database (hardcoded for common games)
+    if (!maxPlayers && !coopPlayers) {
+      const knownGames: { [key: number]: { coop?: number; max?: number } } = {
+        // Popular multiplayer games with known player counts
+        892970: { coop: 10 },  // Valheim
+        648800: { coop: 8 },   // Raft
+        322330: { coop: 6 },   // Don't Starve Together
+        550: { coop: 4 },      // Left 4 Dead 2
+        70: { max: 32 },       // Half-Life
+        4000: { max: 32 },     // Garry's Mod
+        271590: { max: 250 },  // Grand Theft Auto V
+        252490: { coop: 4 },   // Rust
+        230410: { coop: 4 },   // Warframe
+        105600: { coop: 8 },   // Terraria
+        280: { max: 32 },      // Half-Life: Source
+        240: { max: 32 },      // Counter-Strike: Source
+        10: { max: 32 },       // Counter-Strike
+        730: { max: 10 },      // Counter-Strike 2
+        440: { max: 24 },      // Team Fortress 2
+        570: { max: 10 },      // Dota 2
+        304930: { coop: 4 },   // Unturned
+        413150: { coop: 4 },   // Stardew Valley
+        294100: { coop: 4 },   // RimWorld
+        261550: { coop: 4 },   // Mount & Blade II: Bannerlord
+        236850: { coop: 4 },   // Europa Universalis IV
+        552520: { coop: 6 },   // Oxygen Not Included
+        548430: { coop: 4 },   // Deep Rock Galactic
+        289070: { coop: 6 },   // Sid Meier's Civilization VI
+        39140: { max: 64 },    // Serious Sam 3
+        1203220: { coop: 4 },  // NARAKA: BLADEPOINT
+        620: { coop: 2 },      // Portal 2
+        214950: { coop: 2 },   // Total War: ROME II
+        1245620: { coop: 3 }, // ELDEN RING
+        359550: { max: 10 },   // Rainbow Six Siege
+        346110: { coop: 100 },   // ARK: Survival Evolved
+        251570: { coop: 8 },   // 7 Days to Die
+        427520: { max: 65535 },  // Factorio
+        242760: { coop: 8 },   // The Forest
+        221100: { max: 60 },   // DayZ
+        578080: { max: 100 },  // PLAYERUNKNOWN'S BATTLEGROUNDS
+        1172470: { max: 60 },  // Apex Legends
+        1240440: { max: 24 },  // Halo Infinite
+        8930: { coop: 12 },     // Sid Meier's Civilization V
+        231430: { coop: 8 },   // Company of Heroes 2
+        65800: { coop: 4 },    // Dungeon Defenders
+        49520: { coop: 4 },    // Borderlands 2
+        8980: { coop: 4 },     // Borderlands GOTY
+        32440: { coop: 6 },    // DARK SOULS II
+        335300: { coop: 6 },   // DARK SOULS II: Scholar of the First Sin
+        374320: { coop: 6 },   // DARK SOULS III
+        442070: { coop: 8 },   // Drawful 2
+        219640: { max: 32 },   // Chivalry: Medieval Warfare
+        360: { max: 32 },      // Half-Life Deathmatch: Source
+        40: { max: 32 },       // Half-Life: Deathmatch
+        320: { max: 32 },      // Half-Life 2: Deathmatch
+        80: { max: 32 },       // Counter-Strike: Condition Zero
+        1086940: { coop: 4 },   // Baldur's Gate 3
+      };
+
+      const known = knownGames[appId];
+      if (known) {
+        coopPlayers = known.coop;
+        maxPlayers = known.max;
       }
     }
 

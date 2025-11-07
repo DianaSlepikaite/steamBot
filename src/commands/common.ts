@@ -72,22 +72,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    // Format the games list with player counts
+    // Format the games list with player counts when available
     const gamesList = multiplayerGames
       .slice(0, 20)
-      .map(game => {
+      .map((game, index) => {
         let playerInfo = '';
 
+        // Show player count if available
         if (game.multiplayerInfo.coopPlayers) {
-          playerInfo = ` (Co-op: ${game.multiplayerInfo.coopPlayers} players)`;
+          playerInfo = ` **[${game.multiplayerInfo.coopPlayers}P Co-op]**`;
         } else if (game.multiplayerInfo.maxPlayers) {
-          playerInfo = ` (Up to ${game.multiplayerInfo.maxPlayers} players)`;
-        } else if (game.multiplayerInfo.multiplayerType) {
-          // Show type if no player count available
-          playerInfo = ` (${game.multiplayerInfo.multiplayerType})`;
+          playerInfo = ` **[${game.multiplayerInfo.maxPlayers}P]**`;
         }
 
-        return `• ${game.name}${playerInfo}`;
+        return `${index + 1}. ${game.name}${playerInfo}`;
       })
       .join('\n');
 
