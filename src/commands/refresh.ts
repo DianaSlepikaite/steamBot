@@ -6,10 +6,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   const discordId = interaction.user.id;
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
 
   try {
     // Check if user has linked their Steam account
-    const user = UserModel.get(discordId);
+    const user = UserModel.get(discordId, guildId);
 
     if (!user) {
       return interaction.editReply({
@@ -18,7 +25,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Fetch and store games
-    const result = await fetchAndStoreGames(discordId, user.steam_id);
+    const result = await fetchAndStoreGames(discordId, guildId, user.steam_id);
 
     if (!result.success) {
       if (result.isPrivate) {
@@ -41,7 +48,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         }
 
         // Regular private profile with no cached data
-        UserModel.updatePrivacy(discordId, true);
+        UserModel.updatePrivacy(discordId, guildId, true);
 
         const embed = new EmbedBuilder()
           .setColor(0xFF6B6B)
@@ -63,8 +70,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Success
-    UserModel.updatePrivacy(discordId, false);
-    UserModel.updateLastFetched(discordId);
+    UserModel.updatePrivacy(discordId, guildId, false);
+    UserModel.updateLastFetched(discordId, guildId);
 
     const embed = new EmbedBuilder()
       .setColor(0x57F287)

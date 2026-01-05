@@ -2,6 +2,7 @@ import db from './db';
 
 export interface User {
   discord_id: string;
+  guild_id: string;
   steam_id: string;
   last_updated: number;
   is_private: boolean;
@@ -15,23 +16,24 @@ export interface Game {
 
 export interface UserGame {
   discord_id: string;
+  guild_id: string;
   app_id: number;
   playtime: number;
 }
 
 // User operations
 export const UserModel = {
-  create(discordId: string, steamId: string): void {
+  create(discordId: string, guildId: string, steamId: string): void {
     const stmt = db.prepare(`
-      INSERT OR REPLACE INTO users (discord_id, steam_id, last_updated, is_private)
-      VALUES (?, ?, ?, 0)
+      INSERT OR REPLACE INTO users (discord_id, guild_id, steam_id, last_updated, is_private)
+      VALUES (?, ?, ?, ?, 0)
     `);
-    stmt.run(discordId, steamId, Date.now());
+    stmt.run(discordId, guildId, steamId, Date.now());
   },
 
-  get(discordId: string): User | undefined {
-    const stmt = db.prepare('SELECT * FROM users WHERE discord_id = ?');
-    const row = stmt.get(discordId) as any;
+  get(discordId: string, guildId: string): User | undefined {
+    const stmt = db.prepare('SELECT * FROM users WHERE discord_id = ? AND guild_id = ?');
+    const row = stmt.get(discordId, guildId) as any;
     if (!row) return undefined;
     return {
       ...row,
@@ -39,25 +41,25 @@ export const UserModel = {
     };
   },
 
-  updatePrivacy(discordId: string, isPrivate: boolean): void {
+  updatePrivacy(discordId: string, guildId: string, isPrivate: boolean): void {
     const stmt = db.prepare(`
       UPDATE users SET is_private = ?, last_updated = ?
-      WHERE discord_id = ?
+      WHERE discord_id = ? AND guild_id = ?
     `);
-    stmt.run(isPrivate ? 1 : 0, Date.now(), discordId);
+    stmt.run(isPrivate ? 1 : 0, Date.now(), discordId, guildId);
   },
 
-  updateLastFetched(discordId: string): void {
+  updateLastFetched(discordId: string, guildId: string): void {
     const stmt = db.prepare(`
       UPDATE users SET last_updated = ?
-      WHERE discord_id = ?
+      WHERE discord_id = ? AND guild_id = ?
     `);
-    stmt.run(Date.now(), discordId);
+    stmt.run(Date.now(), discordId, guildId);
   },
 
-  delete(discordId: string): void {
-    const stmt = db.prepare('DELETE FROM users WHERE discord_id = ?');
-    stmt.run(discordId);
+  delete(discordId: string, guildId: string): void {
+    const stmt = db.prepare('DELETE FROM users WHERE discord_id = ? AND guild_id = ?');
+    stmt.run(discordId, guildId);
   }
 };
 
@@ -97,47 +99,47 @@ export const GameModel = {
 
 // UserGame operations
 export const UserGameModel = {
-  create(discordId: string, appId: number, playtime: number): void {
+  create(discordId: string, guildId: string, appId: number, playtime: number): void {
     const stmt = db.prepare(`
-      INSERT OR REPLACE INTO user_games (discord_id, app_id, playtime)
-      VALUES (?, ?, ?)
+      INSERT OR REPLACE INTO user_games (discord_id, guild_id, app_id, playtime)
+      VALUES (?, ?, ?, ?)
     `);
-    stmt.run(discordId, appId, playtime);
+    stmt.run(discordId, guildId, appId, playtime);
   },
 
-  deleteAllForUser(discordId: string): void {
-    const stmt = db.prepare('DELETE FROM user_games WHERE discord_id = ?');
-    stmt.run(discordId);
+  deleteAllForUser(discordId: string, guildId: string): void {
+    const stmt = db.prepare('DELETE FROM user_games WHERE discord_id = ? AND guild_id = ?');
+    stmt.run(discordId, guildId);
   },
 
-  getUserGames(discordId: string): (Game & { playtime: number })[] {
+  getUserGames(discordId: string, guildId: string): (Game & { playtime: number })[] {
     const stmt = db.prepare(`
       SELECT g.*, ug.playtime
       FROM user_games ug
       JOIN games g ON ug.app_id = g.app_id
-      WHERE ug.discord_id = ?
+      WHERE ug.discord_id = ? AND ug.guild_id = ?
       ORDER BY g.name
     `);
-    return stmt.all(discordId) as (Game & { playtime: number })[];
+    return stmt.all(discordId, guildId) as (Game & { playtime: number })[];
   },
 
-  getUsersWithGame(appId: number): string[] {
+  getUsersWithGame(guildId: string, appId: number): string[] {
     const stmt = db.prepare(`
       SELECT discord_id FROM user_games
-      WHERE app_id = ?
+      WHERE guild_id = ? AND app_id = ?
     `);
-    return (stmt.all(appId) as { discord_id: string }[]).map(row => row.discord_id);
+    return (stmt.all(guildId, appId) as { discord_id: string }[]).map(row => row.discord_id);
   },
 
-  userHasGame(discordId: string, appId: number): boolean {
+  userHasGame(discordId: string, guildId: string, appId: number): boolean {
     const stmt = db.prepare(`
       SELECT 1 FROM user_games
-      WHERE discord_id = ? AND app_id = ?
+      WHERE discord_id = ? AND guild_id = ? AND app_id = ?
     `);
-    return stmt.get(discordId, appId) !== undefined;
+    return stmt.get(discordId, guildId, appId) !== undefined;
   },
 
-  getCommonGames(discordIds: string[]): Game[] {
+  getCommonGames(guildId: string, discordIds: string[]): Game[] {
     if (discordIds.length === 0) return [];
 
     const placeholders = discordIds.map(() => '?').join(',');
@@ -145,20 +147,20 @@ export const UserGameModel = {
       SELECT g.*, COUNT(DISTINCT ug.discord_id) as user_count
       FROM games g
       JOIN user_games ug ON g.app_id = ug.app_id
-      WHERE ug.discord_id IN (${placeholders})
+      WHERE ug.guild_id = ? AND ug.discord_id IN (${placeholders})
       GROUP BY g.app_id
       HAVING user_count = ?
       ORDER BY g.name
     `);
 
-    return stmt.all(...discordIds, discordIds.length) as Game[];
+    return stmt.all(guildId, ...discordIds, discordIds.length) as Game[];
   },
 
-  getUserGameCount(discordId: string): number {
+  getUserGameCount(discordId: string, guildId: string): number {
     const stmt = db.prepare(`
       SELECT COUNT(*) as count FROM user_games
-      WHERE discord_id = ?
+      WHERE discord_id = ? AND guild_id = ?
     `);
-    return (stmt.get(discordId) as { count: number }).count;
+    return (stmt.get(discordId, guildId) as { count: number }).count;
   }
 };

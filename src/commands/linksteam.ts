@@ -7,9 +7,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const steamInput = interaction.options.getString('steam_url_or_id', true);
   const discordId = interaction.user.id;
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
 
   try {
-    console.log(`[linksteam] User ${discordId} attempting to link: ${steamInput}`);
+    console.log(`[linksteam] User ${discordId} in guild ${guildId} attempting to link: ${steamInput}`);
 
     // Resolve Steam ID
     const steamId = await resolveSteamId(steamInput);
@@ -23,17 +30,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Save user to database
-    UserModel.create(discordId, steamId);
-    console.log(`[linksteam] Saved user to database: Discord ${discordId} -> Steam ${steamId}`);
+    UserModel.create(discordId, guildId, steamId);
+    console.log(`[linksteam] Saved user to database: Discord ${discordId} in guild ${guildId} -> Steam ${steamId}`);
 
     // Fetch and store games
     console.log(`[linksteam] Fetching games for Steam ID: ${steamId}`);
-    const result = await fetchAndStoreGames(discordId, steamId);
+    const result = await fetchAndStoreGames(discordId, guildId, steamId);
     console.log(`[linksteam] Fetch result:`, result);
 
     if (!result.success) {
       if (result.isPrivate) {
-        UserModel.updatePrivacy(discordId, true);
+        UserModel.updatePrivacy(discordId, guildId, true);
 
         const embed = new EmbedBuilder()
           .setColor(0xFF6B6B)
@@ -56,8 +63,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Success
-    UserModel.updatePrivacy(discordId, false);
-    UserModel.updateLastFetched(discordId);
+    UserModel.updatePrivacy(discordId, guildId, false);
+    UserModel.updateLastFetched(discordId, guildId);
 
     const embed = new EmbedBuilder()
       .setColor(0x66C0F4)

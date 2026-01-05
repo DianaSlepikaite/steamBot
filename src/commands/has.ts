@@ -7,10 +7,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = interaction.options.getUser('user', true);
   const gameQuery = interaction.options.getString('game', true);
   const discordId = targetUser.id;
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
 
   try {
     // Check if user has linked their Steam account
-    const user = UserModel.get(discordId);
+    const user = UserModel.get(discordId, guildId);
 
     if (!user) {
       return interaction.editReply({
@@ -42,7 +49,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Check if user owns the game
-    const hasGame = UserGameModel.userHasGame(discordId, game.app_id);
+    const hasGame = UserGameModel.userHasGame(discordId, guildId, game.app_id);
 
     const embed = new EmbedBuilder()
       .setColor(hasGame ? 0x57F287 : 0x5865F2)

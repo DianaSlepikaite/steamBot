@@ -5,6 +5,14 @@ import { filterMultiplayerGames } from '../utils/multiplayer';
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
+
   try {
     // Collect all user options
     const userIds: string[] = [];
@@ -26,7 +34,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const privateUsers: string[] = [];
 
     for (const userId of userIds) {
-      const user = UserModel.get(userId);
+      const user = UserModel.get(userId, guildId);
       if (!user) {
         missingUsers.push(userId);
       } else if (user.is_private) {
@@ -49,7 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Get common games
-    const commonGames = UserGameModel.getCommonGames(userIds);
+    const commonGames = UserGameModel.getCommonGames(guildId, userIds);
 
     if (commonGames.length === 0) {
       const userMentions = userIds.map(id => `<@${id}>`).join(', ');

@@ -92,6 +92,7 @@ async function resolveVanityUrl(vanityName: string): Promise<string | null> {
  */
 export async function fetchAndStoreGames(
   discordId: string,
+  guildId: string,
   steamId: string
 ): Promise<FetchGamesResult> {
   try {
@@ -146,7 +147,7 @@ export async function fetchAndStoreGames(
       console.log(`[Steam API] Empty response. Profile may be private or have no games.`);
 
       // Check if user already has games stored
-      const existingGameCount = UserGameModel.getUserGameCount(discordId);
+      const existingGameCount = UserGameModel.getUserGameCount(discordId, guildId);
 
       if (existingGameCount > 0) {
         console.log(`[Steam API] User has ${existingGameCount} games stored. Not wiping due to likely privacy setting.`);
@@ -166,8 +167,8 @@ export async function fetchAndStoreGames(
       };
     }
 
-    // Clear existing games for this user
-    UserGameModel.deleteAllForUser(discordId);
+    // Clear existing games for this user in this guild
+    UserGameModel.deleteAllForUser(discordId, guildId);
 
     // Store games in database
     for (const game of games) {
@@ -179,7 +180,7 @@ export async function fetchAndStoreGames(
       GameModel.createOrUpdate(game.appid, game.name, iconUrl);
 
       // Store user-game relationship
-      UserGameModel.create(discordId, game.appid, game.playtime_forever || 0);
+      UserGameModel.create(discordId, guildId, game.appid, game.playtime_forever || 0);
     }
 
     return {

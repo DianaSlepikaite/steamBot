@@ -5,6 +5,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   const gameQuery = interaction.options.getString('game', true);
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
 
   try {
     // Search for games matching the query
@@ -24,8 +31,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    // Get users who own this game
-    const userIds = UserGameModel.getUsersWithGame(game.app_id);
+    // Get users who own this game in this guild
+    const userIds = UserGameModel.getUsersWithGame(guildId, game.app_id);
 
     if (userIds.length === 0) {
       return interaction.editReply({

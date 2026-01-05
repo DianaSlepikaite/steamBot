@@ -22,10 +22,12 @@ export function initializeDatabase() {
   // Users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
-      discord_id TEXT PRIMARY KEY,
+      discord_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
       steam_id TEXT NOT NULL,
       last_updated INTEGER NOT NULL,
-      is_private INTEGER NOT NULL DEFAULT 0
+      is_private INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (discord_id, guild_id)
     )
   `);
 
@@ -42,18 +44,24 @@ export function initializeDatabase() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_games (
       discord_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
       app_id INTEGER NOT NULL,
       playtime INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (discord_id, app_id),
-      FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE,
+      PRIMARY KEY (discord_id, guild_id, app_id),
+      FOREIGN KEY (discord_id, guild_id) REFERENCES users(discord_id, guild_id) ON DELETE CASCADE,
       FOREIGN KEY (app_id) REFERENCES games(app_id) ON DELETE CASCADE
     )
   `);
 
   // Create indexes for faster queries
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_user_games_discord
-    ON user_games(discord_id)
+    CREATE INDEX IF NOT EXISTS idx_user_games_discord_guild
+    ON user_games(discord_id, guild_id)
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_user_games_guild
+    ON user_games(guild_id)
   `);
 
   db.exec(`
@@ -64,6 +72,11 @@ export function initializeDatabase() {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_games_name
     ON games(name)
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_users_guild
+    ON users(guild_id)
   `);
 
   console.log('Database initialized successfully');

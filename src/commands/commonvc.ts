@@ -5,15 +5,16 @@ import { filterMultiplayerGames } from '../utils/multiplayer';
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
+  const guildId = interaction.guildId;
+
+  if (!guildId || !interaction.guild) {
+    return interaction.editReply({
+      content: 'This command can only be used in a server.',
+    });
+  }
+
   try {
     const channelName = interaction.options.getString('channel', true);
-
-    // Get the guild
-    if (!interaction.guild) {
-      return interaction.editReply({
-        content: 'This command can only be used in a server.',
-      });
-    }
 
     // Find the voice channel by name
     const voiceChannels = interaction.guild.channels.cache.filter(
@@ -56,7 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const privateUsers: string[] = [];
 
     for (const userId of userIds) {
-      const user = UserModel.get(userId);
+      const user = UserModel.get(userId, guildId);
       if (!user) {
         missingUsers.push(userId);
       } else if (user.is_private) {
@@ -79,7 +80,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Get common games
-    const commonGames = UserGameModel.getCommonGames(userIds);
+    const commonGames = UserGameModel.getCommonGames(guildId, userIds);
 
     if (commonGames.length === 0) {
       const userMentions = userIds.map(id => `<@${id}>`).join(', ');
